@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pedido de Almuerzo — YAMBOLY</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
   :root {
     --azul: #384967;
@@ -19,7 +19,6 @@
     --gris: #f4f6f9;
     --texto: #1a2535;
     --error: #c0392b;
-    --exito: #27ae60;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -90,11 +89,6 @@
     font-weight: 600;
     color: #4a5568;
     margin-bottom: 6px;
-  }
-  .field label .opcional {
-    font-weight: 400;
-    color: #a0aec0;
-    font-size: 0.75rem;
   }
   .field input, .field select {
     width: 100%;
@@ -319,7 +313,6 @@
     line-height: 1.5;
     text-align: center;
   }
-  .ayuda-text strong { color: var(--azul); }
 </style>
 </head>
 <body>
@@ -368,11 +361,11 @@
 
       <div class="field-row">
         <div class="field">
-          <label>Teléfono <span class="opcional">(opcional)</span></label>
+          <label>Teléfono (opcional)</label>
           <input type="tel" id="telefono" placeholder="987654321">
         </div>
         <div class="field">
-          <label>Email <span class="opcional">(opcional)</span></label>
+          <label>Email (opcional)</label>
           <input type="email" id="correo" placeholder="tu@email.com">
         </div>
       </div>
@@ -383,7 +376,7 @@
       <div class="section-title">📅 Selecciona tus días</div>
       <div id="diasGrid" class="dias-grid"></div>
       <div id="loadingMenu" style="text-align:center; padding:20px; color:#718096;">Cargando días disponibles...</div>
-      <div id="sinDias" style="display:none; text-align:center; padding:20px; color:#a0aec0;">No hay días disponibles para pedir en este momento.</div>
+      <div id="sinDias" style="display:none; text-align:center; padding:20px; color:#a0aec0;">No hay días disponibles.</div>
     </div>
 
     <!-- BOTÓN -->
@@ -403,11 +396,11 @@
 
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpi3l2uP68bp37RFAxVQAEgZ63Wve1FYrnAfepy2mamXkcfz60GejldOpi_t-FEDiMZw/exec';
+  
   let diasDisponibles = [];
+  let menuSemanal = null;
   let hayMenuProxima = false;
-  let menuPorDia = {};
 
-  // Feriados peruanos 2026
   const FERIADOS_2026 = [
     '2026-01-01', '2026-02-16', '2026-02-17', '2026-03-30',
     '2026-05-01', '2026-06-29', '2026-07-23', '2026-07-28',
@@ -415,7 +408,71 @@
     '2026-12-09', '2026-12-25'
   ];
 
-  // Actualizar fecha en la barra
+  // ============================================================
+  // CARGAR MENÚ DESDE SHEETS (igual a Drimer)
+  // ============================================================
+  async function cargarMenuDesdeSheets() {
+    try {
+      const resp = await fetch(`${SCRIPT_URL}?action=getMenu`);
+      const data = await resp.json();
+      if (data.status === 'OK' && data.menuPorSemana) {
+        menuSemanal = data.menuPorSemana;
+        console.log('✅ Menú cargado:', JSON.stringify(menuSemanal));
+      }
+    } catch (err) {
+      console.log('⚠️ Error cargando menú:', err);
+      menuSemanal = null;
+    }
+  }
+
+  function getLunesDeSemana(fechaISO) {
+    const fecha = new Date(fechaISO + 'T12:00:00');
+    const dia = fecha.getDay();
+    const diff = (dia === 0 ? -6 : 1 - dia);
+    fecha.setDate(fecha.getDate() + diff);
+    const yyyy = fecha.getFullYear();
+    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dd = String(fecha.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function getOpcionesMenu(nombreDia, fechaISO) {
+    const fallback = {
+      sopa: 'Sopa del día',
+      entrada: 'Entrada',
+      fondo_1: 'Fondo especial',
+      fondo_2: 'Fondo light',
+      opcion_light: 'Opción Light',
+      postre: 'Postre',
+      bebida: 'Bebida'
+    };
+
+    if (!menuSemanal) {
+      console.log('⚠️ menuSemanal es null');
+      return fallback;
+    }
+
+    const lunesDeSemana = getLunesDeSemana(fechaISO);
+    const menuSemana = menuSemanal[lunesDeSemana];
+
+    if (!menuSemana || !menuSemana[nombreDia]) {
+      console.log('⚠️ No hay menú para ' + nombreDia + ' en semana ' + lunesDeSemana);
+      return fallback;
+    }
+
+    console.log('✅ Menú encontrado para ' + nombreDia + ': ' + JSON.stringify(menuSemana[nombreDia]));
+    return menuSemana[nombreDia];
+  }
+
+  // ============================================================
+  // INICIALIZACIÓN
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', async () => {
+    actualizarFecha();
+    await cargarMenuDesdeSheets();
+    generarDias();
+  });
+
   function actualizarFecha() {
     const hoy = new Date();
     const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -426,53 +483,10 @@
     document.getElementById('fechaBar').textContent = texto;
   }
 
-  async function obtenerMenuDias(fechas) {
-    try {
-      const fechasJSON = JSON.stringify(fechas);
-      const response = await fetch(SCRIPT_URL + '?accion=obtenerMenu&fechas=' + encodeURIComponent(fechasJSON));
-      const data = await response.json();
-      menuPorDia = data.menu || {};
-      console.log('Menú cargado:', JSON.stringify(menuPorDia));
-    } catch (error) {
-      console.log('Error obteniendo menú:', error);
-      menuPorDia = {};
-    }
-  }
-
-  async function verificarMenuProxima() {
-    try {
-      const response = await fetch(SCRIPT_URL + '?accion=verificarMenu');
-      const data = await response.json();
-      hayMenuProxima = data.hayMenu || false;
-      console.log('Menú próxima semana:', hayMenuProxima);
-    } catch (error) {
-      console.log('Error verificando menú:', error);
-      hayMenuProxima = false;
-    }
-  }
-
-  function obtenerMenuPorDia(fechaISO) {
-    const menu = menuPorDia[fechaISO];
-    if (menu) {
-      console.log('Menú encontrado para ' + fechaISO + ':', JSON.stringify(menu));
-      return menu;
-    }
-    console.log('Menú NO encontrado para ' + fechaISO + ', usando fallback');
-    return {
-      sopa: 'Sopa del día',
-      entrada: 'Entrada',
-      fondo_1: 'Fondo especial',
-      fondo_2: 'Fondo light',
-      opcion_light: 'Opción Light',
-      postre: 'Postre',
-      bebida: 'Bebida'
-    };
-  }
-
   function obtenerDiasDisponibles() {
     const hoy = new Date();
     const horaActual = hoy.getHours();
-    const diaSemanaHoy = hoy.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+    const diaSemanaHoy = hoy.getDay();
 
     const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -481,59 +495,43 @@
     const diasDisponibles = [];
     let haCerradoHoy = horaActual >= 8;
 
-    // Determinar rango de fechas a mostrar
     let fechaInicio, fechaFin;
 
     if (diaSemanaHoy === 0 || diaSemanaHoy === 6) {
-      // SÁBADO O DOMINGO: mostrar siguiente semana (lunes-sábado)
+      // Sábado o domingo: toda la siguiente semana (Lunes-Sábado)
       fechaInicio = new Date(hoy);
       const diasAlProximoLunes = diaSemanaHoy === 0 ? 1 : 2;
       fechaInicio.setDate(fechaInicio.getDate() + diasAlProximoLunes);
       
       fechaFin = new Date(fechaInicio);
-      fechaFin.setDate(fechaFin.getDate() + 5); // sábado
+      fechaFin.setDate(fechaFin.getDate() + 5); // Lunes + 5 = Sábado
     } else if (diaSemanaHoy === 5) {
       // VIERNES
       if (haCerradoHoy) {
-        // Después de 8am: "Plazo cerrado" + sábado + próxima semana (si existe menú)
+        // DESPUÉS de 8am: Sábado + siguiente semana (Lunes-Sábado)
         fechaInicio = new Date(hoy);
+        fechaInicio.setDate(fechaInicio.getDate() + 1); // Sábado
         
-        if (hayMenuProxima) {
-          // Mostrar sábado + próxima semana completa
-          fechaFin = new Date(hoy);
-          fechaFin.setDate(fechaFin.getDate() + 8); // hasta sábado próximo
-        } else {
-          // Solo sábado
-          fechaFin = new Date(hoy);
-          fechaFin.setDate(fechaFin.getDate() + 1); // solo sábado
-        }
+        fechaFin = new Date(fechaInicio);
+        fechaFin.setDate(fechaFin.getDate() + 6); // Sábado + 6 = próximo viernes
       } else {
-        // Antes de 8am: viernes + sábado SOLO
+        // ANTES de 8am: Viernes + Sábado
         fechaInicio = new Date(hoy);
         fechaFin = new Date(hoy);
-        fechaFin.setDate(fechaFin.getDate() + 1); // sábado
+        fechaFin.setDate(fechaFin.getDate() + 1); // Sábado
       }
     } else {
-      // LUNES A JUEVES
-      if (haCerradoHoy) {
-        // Después de 8am: "Plazo cerrado" ese día + resto de semana
-        fechaInicio = new Date(hoy);
-      } else {
-        // Antes de 8am: ese día + resto de semana
-        fechaInicio = new Date(hoy);
-      }
-      
-      // Fin: sábado de esta semana
+      // Lunes-Jueves: hasta sábado de esa semana
+      fechaInicio = new Date(hoy);
       fechaFin = new Date(fechaInicio);
       const diasAlSabado = 6 - fechaInicio.getDay();
       fechaFin.setDate(fechaFin.getDate() + diasAlSabado);
     }
 
-    // Generar días
     let fecha = new Date(fechaInicio);
     while (fecha <= fechaFin) {
       const diaSemana = fecha.getDay();
-      if (diaSemana !== 0) { // No domingo
+      if (diaSemana !== 0) {
         const fechaISO = fecha.toISOString().split('T')[0];
         const esFeriado = FERIADOS_2026.includes(fechaISO);
         const nombre = nombresDias[diaSemana];
@@ -546,14 +544,7 @@
           bloqueado = true;
           textoBloqueado = 'Feriado';
         } else if (haCerradoHoy && diaSemanaHoy !== 5) {
-          // Después de 8am (no viernes): hoy aparece "Plazo cerrado"
           if (diaSemana === diaSemanaHoy && fecha.toDateString() === hoy.toDateString()) {
-            bloqueado = true;
-            textoBloqueado = 'Plazo cerrado';
-          }
-        } else if (haCerradoHoy && diaSemanaHoy === 5) {
-          // Viernes después de 8am: viernes aparece "Plazo cerrado"
-          if (diaSemana === 5 && fecha.toDateString() === hoy.toDateString()) {
             bloqueado = true;
             textoBloqueado = 'Plazo cerrado';
           }
@@ -574,14 +565,8 @@
     return diasDisponibles;
   }
 
-  async function generarDias() {
-    actualizarFecha();
-    await verificarMenuProxima();
+  function generarDias() {
     diasDisponibles = obtenerDiasDisponibles();
-    
-    // Obtener menú para todos los días
-    const fechas = diasDisponibles.map(d => d.fechaISO);
-    await obtenerMenuDias(fechas);
     
     const grid = document.getElementById('diasGrid');
     grid.innerHTML = '';
@@ -609,7 +594,7 @@
             <div style="font-size:0.75rem; opacity:0.6;">${dia.textoBloqueado}</div>
           </div>`;
       } else {
-        const m = obtenerMenuPorDia(dia.fechaISO);
+        const m = getOpcionesMenu(dia.nombre, dia.fechaISO);
         card.innerHTML = `
           <div class="dia-header" onclick="toggleDia('${dia.id}')">
             <div class="dia-check" id="check_${dia.id}">☐</div>
@@ -800,8 +785,6 @@
   document.getElementById('dni').addEventListener('input', function() {
     this.value = this.value.replace(/\D/g, '').slice(0, 8);
   });
-
-  window.addEventListener('DOMContentLoaded', generarDias);
 </script>
 </body>
 </html>
