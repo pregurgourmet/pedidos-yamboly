@@ -364,6 +364,7 @@
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpi3l2uP68bp37RFAxVQAEgZ63Wve1FYrnAfepy2mamXkcfz60GejldOpi_t-FEDiMZw/exec';
   let diasDisponibles = [];
+  let hayMenuProxima = false;
 
   // Feriados peruanos 2026
   const FERIADOS_2026 = [
@@ -385,6 +386,18 @@
     };
   }
 
+  async function verificarMenuProxima() {
+    try {
+      const response = await fetch(SCRIPT_URL + '?accion=verificarMenu');
+      const data = await response.json();
+      hayMenuProxima = data.hayMenu || false;
+      console.log('Menú próxima semana:', hayMenuProxima);
+    } catch (error) {
+      console.log('Error verificando menú:', error);
+      hayMenuProxima = false;
+    }
+  }
+
   function obtenerDiasDisponibles() {
     const hoy = new Date();
     const horaActual = hoy.getHours();
@@ -395,95 +408,103 @@
                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
     const diasDisponibles = [];
-
-    // Si es después de las 8:00 AM, los días se "cierran"
     let haCerradoHoy = horaActual >= 8;
 
-    // Determinar fecha de inicio según el día y hora
-    let fechaInicio = new Date(hoy);
+    // Determinar rango de fechas a mostrar
+    let fechaInicio, fechaFin;
 
     if (diaSemanaHoy === 0 || diaSemanaHoy === 6) {
-      // Sábado o domingo: mostrar siguiente semana (lunes-sábado)
-      const diasAlLunes = diaSemanaHoy === 0 ? 1 : 2;
-      fechaInicio.setDate(fechaInicio.getDate() + diasAlLunes);
+      // SÁBADO O DOMINGO: mostrar siguiente semana (lunes-sábado)
+      fechaInicio = new Date(hoy);
+      const diasAlProximoLunes = diaSemanaHoy === 0 ? 1 : 2;
+      fechaInicio.setDate(fechaInicio.getDate() + diasAlProximoLunes);
+      
+      fechaFin = new Date(fechaInicio);
+      fechaFin.setDate(fechaFin.getDate() + 5); // sábado
     } else if (diaSemanaHoy === 5) {
-      // Viernes
+      // VIERNES
       if (haCerradoHoy) {
-        // Después de 8 AM: mostrar sábado + siguiente semana (lunes-sábado)
-        fechaInicio.setDate(fechaInicio.getDate() + 1); // sábado
+        // Después de 8am: "Plazo cerrado" + sábado + próxima semana (si existe menú)
+        fechaInicio = new Date(hoy);
+        
+        if (hayMenuProxima) {
+          // Mostrar sábado + próxima semana completa
+          fechaFin = new Date(hoy);
+          fechaFin.setDate(fechaFin.getDate() + 8); // hasta sábado próximo
+        } else {
+          // Solo sábado
+          fechaFin = new Date(hoy);
+          fechaFin.setDate(fechaFin.getDate() + 1); // solo sábado
+        }
       } else {
-        // Antes de 8 AM: mostrar viernes + resto de la semana
-        // fechaInicio se queda en viernes
+        // Antes de 8am: viernes + sábado SOLO
+        fechaInicio = new Date(hoy);
+        fechaFin = new Date(hoy);
+        fechaFin.setDate(fechaFin.getDate() + 1); // sábado
       }
     } else {
-      // Lunes-Jueves
+      // LUNES A JUEVES
       if (haCerradoHoy) {
-        // Después de 8 AM: mostrar día siguiente
-        fechaInicio.setDate(fechaInicio.getDate() + 1);
+        // Después de 8am: "Plazo cerrado" ese día + resto de semana
+        fechaInicio = new Date(hoy);
       } else {
-        // Antes de 8 AM: mostrar desde hoy
-        // fechaInicio se queda en hoy
+        // Antes de 8am: ese día + resto de semana
+        fechaInicio = new Date(hoy);
       }
+      
+      // Fin: sábado de esta semana
+      fechaFin = new Date(fechaInicio);
+      const diasAlSabado = 6 - fechaInicio.getDay();
+      fechaFin.setDate(fechaFin.getDate() + diasAlSabado);
     }
 
-    // Generar días a mostrar (máximo 14 días)
+    // Generar días
     let fecha = new Date(fechaInicio);
-    let diasMostrados = 0;
-
-    while (diasMostrados < 14) {
+    while (fecha <= fechaFin) {
       const diaSemana = fecha.getDay();
-      const fechaISO = fecha.toISOString().split('T')[0];
-      const esFeriado = FERIADOS_2026.includes(fechaISO);
-      const esFinSemana = diaSemana === 0; // Solo domingos, no mostrar
+      if (diaSemana !== 0) { // No domingo
+        const fechaISO = fecha.toISOString().split('T')[0];
+        const esFeriado = FERIADOS_2026.includes(fechaISO);
+        const nombre = nombresDias[diaSemana];
+        const fechaTexto = `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`;
 
-      if (esFinSemana) {
-        fecha.setDate(fecha.getDate() + 1);
-        continue; // Saltar domingos
-      }
+        let bloqueado = false;
+        let textoBloqueado = '';
 
-      const nombre = nombresDias[diaSemana];
-      const fechaTexto = `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`;
-      const id = fechaISO;
-
-      let bloqueado = false;
-      let textoBloqueado = '';
-
-      // Determinar si está bloqueado
-      if (esFeriado) {
-        bloqueado = true;
-        textoBloqueado = 'Feriado';
-      } else if (haCerradoHoy) {
-        // Después de 8 AM
-        if (diaSemanaHoy === 5) {
-          // Viernes: viernes mismo aparece bloqueado con "Plazo cerrado"
+        if (esFeriado) {
+          bloqueado = true;
+          textoBloqueado = 'Feriado';
+        } else if (haCerradoHoy && diaSemanaHoy !== 5) {
+          // Después de 8am (no viernes): hoy aparece "Plazo cerrado"
+          if (diaSemana === diaSemanaHoy && fecha.toDateString() === hoy.toDateString()) {
+            bloqueado = true;
+            textoBloqueado = 'Plazo cerrado';
+          }
+        } else if (haCerradoHoy && diaSemanaHoy === 5) {
+          // Viernes después de 8am: viernes aparece "Plazo cerrado"
           if (diaSemana === 5 && fecha.toDateString() === hoy.toDateString()) {
             bloqueado = true;
             textoBloqueado = 'Plazo cerrado';
           }
-        } else if (diaSemana === diaSemanaHoy && fecha.toDateString() === hoy.toDateString()) {
-          // Cualquier otro día de la semana: ese día aparece bloqueado
-          bloqueado = true;
-          textoBloqueado = 'Plazo cerrado';
         }
+
+        diasDisponibles.push({
+          id: fechaISO,
+          nombre: nombre,
+          fecha: fechaTexto,
+          fechaISO: fechaISO,
+          bloqueado: bloqueado,
+          textoBloqueado: textoBloqueado
+        });
       }
-
-      diasDisponibles.push({
-        id: id,
-        nombre: nombre,
-        fecha: fechaTexto,
-        fechaISO: fechaISO,
-        bloqueado: bloqueado,
-        textoBloqueado: textoBloqueado
-      });
-
-      diasMostrados++;
       fecha.setDate(fecha.getDate() + 1);
     }
 
     return diasDisponibles;
   }
 
-  function generarDias() {
+  async function generarDias() {
+    await verificarMenuProxima();
     diasDisponibles = obtenerDiasDisponibles();
     const grid = document.getElementById('diasGrid');
     grid.innerHTML = '';
@@ -662,7 +683,7 @@
 
   function mostrarResumen(datos) {
     const div = document.getElementById('resumenPedido');
-    let html = `<h3>🎉 ¡Pedido registrado correctamente!</h3>`;
+    let html = `<h3>🍽️ ¡Disfruta tu almuerzo!</h3>`;
     html += `<div class="resumen-item"><span>Nombre</span><strong>${datos.nombres} ${datos.apellidos}</strong></div>`;
     html += `<div class="resumen-item"><span>DNI</span><strong>${datos.dni}</strong></div>`;
     html += `<div class="resumen-item"><span>Cargo</span><strong>${datos.cargo}</strong></div>`;
@@ -674,7 +695,6 @@
         <span style="color:#718096; font-size:0.8rem;">${p.entrada} · ${p.fondo}</span>
       </div>`;
     });
-    html += `<div style="margin-top:10px; font-size:0.78rem; color:#4a5e3a;">⚠️ Recuerda recoger tu almuerzo a las 12:00 pm en el comedor.</div>`;
     div.innerHTML = html;
     div.style.display = 'block';
   }
