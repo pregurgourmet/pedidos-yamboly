@@ -48,6 +48,7 @@
     padding: 14px 16px;
     text-align: center;
     font-size: 0.9rem;
+    font-weight: 700;
     color: #666;
     display: flex;
     align-items: center;
@@ -263,13 +264,25 @@
     background: #d5f4e6;
     border: 1px solid #7ddbca;
     border-radius: 10px;
-    padding: 16px;
+    padding: 24px;
     margin-bottom: 20px;
   }
-  .resumen h3 {
+  
+  .resumen-titulo {
+    font-size: 1.3rem;
+    font-weight: 700;
     color: var(--azul);
-    margin-bottom: 12px;
+    text-align: center;
+    margin-bottom: 20px;
   }
+
+  .resumen-subtitulo {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1a2535;
+    margin-bottom: 14px;
+  }
+
   .resumen-item {
     display: flex;
     justify-content: space-between;
@@ -277,9 +290,23 @@
     border-bottom: 1px solid rgba(255,255,255,0.5);
     font-size: 0.85rem;
   }
-  .resumen-item:last-child { border-bottom: none; }
+  .resumen-item:last-of-type { border-bottom: none; }
   .resumen-item span { color: #4a5e3a; }
   .resumen-item strong { color: var(--azul); }
+
+  .resumen-detalle {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.5);
+  }
+
+  .resumen-final {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--azul);
+  }
 
   .ayuda-text {
     background: #f0f4f9;
@@ -290,6 +317,7 @@
     font-size: 0.85rem;
     color: #4a5568;
     line-height: 1.5;
+    text-align: center;
   }
   .ayuda-text strong { color: var(--azul); }
 </style>
@@ -390,7 +418,7 @@
   // Actualizar fecha en la barra
   function actualizarFecha() {
     const hoy = new Date();
-    const nombresDias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     
@@ -404,7 +432,7 @@
       const response = await fetch(SCRIPT_URL + '?accion=obtenerMenu&fechas=' + encodeURIComponent(fechasJSON));
       const data = await response.json();
       menuPorDia = data.menu || {};
-      console.log('Menú cargado:', menuPorDia);
+      console.log('Menú cargado:', JSON.stringify(menuPorDia));
     } catch (error) {
       console.log('Error obteniendo menú:', error);
       menuPorDia = {};
@@ -424,7 +452,13 @@
   }
 
   function obtenerMenuPorDia(fechaISO) {
-    return menuPorDia[fechaISO] || {
+    const menu = menuPorDia[fechaISO];
+    if (menu) {
+      console.log('Menú encontrado para ' + fechaISO + ':', JSON.stringify(menu));
+      return menu;
+    }
+    console.log('Menú NO encontrado para ' + fechaISO + ', usando fallback');
+    return {
       sopa: 'Sopa del día',
       entrada: 'Entrada',
       fondo_1: 'Fondo especial',
@@ -726,18 +760,27 @@
 
   function mostrarResumen(datos) {
     const div = document.getElementById('resumenPedido');
-    let html = `<h3>🍽️ ¡Disfruta tu almuerzo!</h3>`;
+    
+    let html = `<div class="resumen-titulo">¡Pedido Realizado!</div>`;
+    
+    html += `<div class="resumen-subtitulo">Detalle de tu pedido:</div>`;
     html += `<div class="resumen-item"><span>Nombre</span><strong>${datos.nombres} ${datos.apellidos}</strong></div>`;
     html += `<div class="resumen-item"><span>DNI</span><strong>${datos.dni}</strong></div>`;
     html += `<div class="resumen-item"><span>Cargo</span><strong>${datos.cargo}</strong></div>`;
     html += `<div class="resumen-item"><span>Área</span><strong>${datos.area}</strong></div>`;
-    html += `<div class="resumen-item"><span>Total almuerzos</span><strong>${datos.totalAlmuerzos}</strong></div>`;
+    html += `<div class="resumen-item"><span>Total de almuerzos</span><strong>${datos.totalAlmuerzos}</strong></div>`;
+    
+    html += `<div class="resumen-detalle">`;
     datos.pedidos.forEach(p => {
-      html += `<div class="resumen-item" style="flex-direction:column; align-items:flex-start;">
-        <strong>${p.fechaTexto}</strong>
-        <span style="color:#718096; font-size:0.8rem;">${p.entrada} · ${p.fondo}</span>
+      html += `<div style="margin-bottom: 12px; padding: 8px; background: rgba(255,255,255,0.3); border-radius: 6px;">
+        <div style="font-weight: 700; color: #1a2535; margin-bottom: 4px;">${p.fechaTexto}</div>
+        <div style="color: #4a5e3a; font-size: 0.85rem;">${p.entrada} · ${p.fondo}</div>
       </div>`;
     });
+    html += `</div>`;
+    
+    html += `<div class="resumen-final">🍽️ ¡Disfruta tu almuerzo!</div>`;
+    
     div.innerHTML = html;
     div.style.display = 'block';
   }
