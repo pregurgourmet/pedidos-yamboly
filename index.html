@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedido de Almuerzo — YAMBOLY</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap');
+
+  :root {
+    --azul: #384967;
+    --azul-claro: #B6CFD0;
+    --azul-suave: #DDE5ED;
+    --verde-suave: #EBF0E3;
+    --blanco: #ffffff;
+    --gris: #f4f6f9;
+    --texto: #1a2535;
+    --error: #c0392b;
+    --exito: #27ae60;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--azul-suave);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+    color: var(--texto);
+  }
+
+  .container { max-width: 640px; margin: 0 auto; }
+
+  .header {
+    background: var(--azul);
+    padding: 24px;
+    border-radius: 20px 20px 0 0;
+    color: white;
+    text-align: center;
+  }
+  .header h1 { font-size: 1.8rem; margin-bottom: 4px; }
+  .header p { font-size: 0.9rem; opacity: 0.9; }
+
+  .fecha-badge {
+    background: var(--verde-suave);
+    border: 1px solid #c8d8bc;
+    padding: 12px 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: #4a5e3a;
+    font-weight: 500;
+  }
+
+  .card {
+    background: var(--blanco);
+    padding: 28px;
+    border-top: 1px solid #e8eef5;
+  }
+  .card:last-of-type {
+    border-radius: 0 0 20px 20px;
+  }
+
+  .section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--azul);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--azul-suave);
+  }
+
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 6px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #d1dce8;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--texto);
+    background: var(--gris);
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--azul);
+    box-shadow: 0 0 0 3px rgba(56,73,103,0.1);
+  }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .dias-grid { display: grid; gap: 8px; }
+
+  .dia-card {
+    border: 1.5px solid #d1dce8;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .dia-card.bloqueado {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .dia-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    background: var(--gris);
+    user-select: none;
+  }
+  .dia-card.activo .dia-header {
+    background: var(--azul);
+    color: white;
+  }
+
+  .dia-check {
+    width: 22px; height: 22px;
+    border: 2px solid #aab8cc;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+  }
+  .dia-card.activo .dia-check {
+    background: white;
+    color: var(--azul);
+  }
+
+  .dia-nombre { font-size: 0.9rem; font-weight: 600; flex: 1; }
+  .dia-fecha-label { font-size: 0.75rem; opacity: 0.7; }
+
+  .dia-opciones {
+    display: none;
+    padding: 16px;
+    background: white;
+    gap: 14px;
+    flex-direction: column;
+  }
+  .dia-card.activo .dia-opciones { display: flex; }
+
+  .opcion-group label.group-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #718096;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .radio-grid { display: grid; gap: 6px; }
+
+  .radio-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 13px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.88rem;
+  }
+  .radio-opt:hover { border-color: var(--azul-claro); }
+  .radio-opt input[type="radio"] { display: none; }
+
+  .radio-dot {
+    width: 18px; height: 18px;
+    border: 2px solid #cbd5e0;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .radio-opt.selected {
+    border-color: var(--azul);
+    background: #f0f4f9;
+  }
+  .radio-opt.selected .radio-dot {
+    background: var(--azul);
+    border-color: var(--azul);
+    color: white;
+    font-size: 0.65rem;
+  }
+
+  .msg {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: none;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  .msg.error {
+    display: block;
+    background: #fadbd8;
+    color: #922b21;
+    border: 1px solid #f5b7b1;
+  }
+
+  .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1.5px solid #d1dce8;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .checkbox-field input[type="checkbox"] { display: none; }
+
+  .checkbox-box {
+    width: 22px; height: 22px;
+    border: 2px solid #cbd5e0;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .checkbox-field.checked .checkbox-box {
+    background: var(--azul);
+    border-color: var(--azul);
+    color: white;
+  }
+
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-submit:hover { background: #2d3a52; }
+  .btn-submit:disabled { background: #cbd5e0; cursor: not-allowed; }
+
+  .spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .resumen {
+    display: none;
+    background: #d5f4e6;
+    border: 1px solid #7ddbca;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .resumen h3 {
+    color: var(--azul);
+    margin-bottom: 12px;
+  }
+  .resumen-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.5);
+    font-size: 0.85rem;
+  }
+  .resumen-item:last-child { border-bottom: none; }
+  .resumen-item span { color: #4a5e3a; }
+  .resumen-item strong { color: var(--azul); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🍽️ YAMBOLY</h1>
+    <p>Sistema de Pedidos de Almuerzo</p>
+  </div>
+
+  <div id="msgError" class="msg"></div>
+  <div id="resumenPedido" class="resumen"></div>
+
+  <form id="formulario">
+    <!-- DATOS PERSONALES -->
+    <div class="card">
+      <div class="section-title">📋 Tus Datos</div>
+      
+      <div class="field-row">
+        <div class="field">
+          <label>Nombre completo *</label>
+          <input type="text" id="nombre" placeholder="Juan Pérez" required>
+        </div>
+        <div class="field">
+          <label>DNI *</label>
+          <input type="text" id="dni" placeholder="12345678" maxlength="8" required>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Área/Departamento *</label>
+          <input type="text" id="area" placeholder="Ej: Producción" required>
+        </div>
+        <div class="field">
+          <label>Teléfono *</label>
+          <input type="tel" id="telefono" placeholder="987654321" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Email *</label>
+        <input type="email" id="correo" placeholder="tu@email.com" required>
+      </div>
+    </div>
+
+    <!-- DÍAS Y MENÚ -->
+    <div class="card">
+      <div class="section-title">📅 Selecciona tus días</div>
+      <div id="diasGrid" class="dias-grid"></div>
+      <div id="loadingMenu" style="text-align:center; padding:20px; color:#718096;">Cargando días disponibles...</div>
+      <div id="sinDias" style="display:none; text-align:center; padding:20px; color:#a0aec0;">No hay días disponibles para pedir en este momento.</div>
+    </div>
+
+    <!-- CONFIRMACIÓN -->
+    <div class="card">
+      <div class="section-title">✅ Confirmación</div>
+      <label class="checkbox-field" onclick="toggleConfirm()" style="cursor:pointer;">
+        <input type="checkbox" id="confirmBox">
+        <div class="checkbox-box">✓</div>
+        <span style="flex:1;">Confirmo mi pedido y sé que debo recogerlo a las 12:00 pm</span>
+      </label>
+
+      <button type="submit" class="btn-submit" id="btnSubmit">
+        <span id="btnTexto">Registrar mi pedido</span>
+        <div id="spinner" class="spinner"></div>
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const SCRIPT_URL = 'TU_APPS_SCRIPT_URL_AQUI';
+  let diasDisponibles = [];
+  let confirmado = false;
+
+  // Feriados peruanos 2026
+  const FERIADOS_2026 = [
+    '2026-01-01', '2026-02-16', '2026-02-17', '2026-03-30',
+    '2026-05-01', '2026-06-29', '2026-07-23', '2026-07-28',
+    '2026-07-29', '2026-08-06', '2026-10-08', '2026-12-08',
+    '2026-12-09', '2026-12-25'
+  ];
+
+  function getOpcionesMenu(nombreDia, fechaISO) {
+    return {
+      sopa: 'Sopa del día',
+      entrada: 'Entrada',
+      fondo1: 'Fondo especial',
+      fondo2: 'Fondo light',
+      light: 'Opción Light',
+      postre: 'Postre',
+      bebida: 'Bebida'
+    };
+  }
+
+  function obtenerDiasDisponibles() {
+    const hoy = new Date();
+    const horaActual = hoy.getHours();
+    const diasDisponibles = [];
+
+    // Si es después de las 8:00 AM, empezar desde mañana; si no, empezar hoy
+    let fechaInicio = new Date(hoy);
+    if (horaActual >= 8) {
+      fechaInicio.setDate(fechaInicio.getDate() + 1);
+    }
+
+    const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                          'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+    let fecha = new Date(fechaInicio);
+    for (let i = 0; i < 14; i++) {
+      const diaSemana = fecha.getDay();
+      const fechaISO = fecha.toISOString().split('T')[0];
+      const esFeriado = FERIADOS_2026.includes(fechaISO);
+      const esFinSemana = diaSemana === 0 || diaSemana === 6;
+
+      const nombre = nombresDias[diaSemana];
+      const fechaTexto = `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`;
+      const id = fechaISO;
+
+      let bloqueado = false;
+      let textoBloqueado = '';
+
+      if (esFinSemana) {
+        bloqueado = true;
+        textoBloqueado = 'Fin de semana';
+      } else if (esFeriado) {
+        bloqueado = true;
+        textoBloqueado = 'Feriado';
+      }
+
+      diasDisponibles.push({
+        id: id,
+        nombre: nombre,
+        fecha: fechaTexto,
+        fechaISO: fechaISO,
+        bloqueado: bloqueado,
+        textoBloqueado: textoBloqueado
+      });
+
+      fecha.setDate(fecha.getDate() + 1);
+    }
+
+    return diasDisponibles;
+  }
+
+  function generarDias() {
+    diasDisponibles = obtenerDiasDisponibles();
+    const grid = document.getElementById('diasGrid');
+    grid.innerHTML = '';
+
+    document.getElementById('loadingMenu').style.display = 'none';
+
+    if (diasDisponibles.length === 0) {
+      document.getElementById('sinDias').style.display = 'block';
+      return;
+    }
+
+    diasDisponibles.forEach((dia) => {
+      const card = document.createElement('div');
+      card.className = `dia-card${dia.bloqueado ? ' bloqueado' : ''}`;
+      card.id = `card_${dia.id}`;
+
+      if (dia.bloqueado) {
+        card.innerHTML = `
+          <div class="dia-header" style="cursor:not-allowed;">
+            <div class="dia-check">—</div>
+            <div style="flex:1;">
+              <div class="dia-nombre" style="text-decoration:line-through; opacity:0.6;">${dia.nombre}</div>
+              <div class="dia-fecha-label" style="text-decoration:line-through;">${dia.fecha}</div>
+            </div>
+            <div style="font-size:0.75rem; opacity:0.6;">${dia.textoBloqueado}</div>
+          </div>`;
+      } else {
+        const m = getOpcionesMenu(dia.nombre, dia.fechaISO);
+        card.innerHTML = `
+          <div class="dia-header" onclick="toggleDia('${dia.id}')">
+            <div class="dia-check" id="check_${dia.id}">☐</div>
+            <div style="flex:1;">
+              <div class="dia-nombre">${dia.nombre}</div>
+              <div class="dia-fecha-label">${dia.fecha}</div>
+            </div>
+            <div style="font-size:1.2rem;">🍽️</div>
+          </div>
+          <div class="dia-opciones" id="opciones_${dia.id}">
+            <div class="opcion-group">
+              <label class="group-label">Entrada</label>
+              <div class="radio-grid">
+                <label class="radio-opt" onclick="selectRadio(this, 'entrada_${dia.id}')">
+                  <input type="radio" name="entrada_${dia.id}" value="${m.sopa}">
+                  <div class="radio-dot"></div>
+                  🍜 ${m.sopa}
+                </label>
+                <label class="radio-opt" onclick="selectRadio(this, 'entrada_${dia.id}')">
+                  <input type="radio" name="entrada_${dia.id}" value="${m.entrada}">
+                  <div class="radio-dot"></div>
+                  🥗 ${m.entrada}
+                </label>
+              </div>
+            </div>
+            <div class="opcion-group">
+              <label class="group-label">Plato de Fondo</label>
+              <div class="radio-grid">
+                <label class="radio-opt" onclick="selectRadio(this, 'fondo_${dia.id}')">
+                  <input type="radio" name="fondo_${dia.id}" value="${m.fondo1}">
+                  <div class="radio-dot"></div>
+                  🍽️ ${m.fondo1}
+                </label>
+                <label class="radio-opt" onclick="selectRadio(this, 'fondo_${dia.id}')">
+                  <input type="radio" name="fondo_${dia.id}" value="${m.fondo2}">
+                  <div class="radio-dot"></div>
+                  🥦 ${m.fondo2}
+                </label>
+              </div>
+            </div>
+            <div class="opcion-group">
+              <label class="group-label">Postre</label>
+              <div class="radio-grid">
+                <label class="radio-opt" onclick="selectRadio(this, 'postre_${dia.id}')">
+                  <input type="radio" name="postre_${dia.id}" value="${m.postre}">
+                  <div class="radio-dot"></div>
+                  🍰 ${m.postre}
+                </label>
+              </div>
+            </div>
+            <div class="opcion-group">
+              <label class="group-label">Bebida</label>
+              <div class="radio-grid">
+                <label class="radio-opt" onclick="selectRadio(this, 'bebida_${dia.id}')">
+                  <input type="radio" name="bebida_${dia.id}" value="${m.bebida}">
+                  <div class="radio-dot"></div>
+                  🥤 ${m.bebida}
+                </label>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      grid.appendChild(card);
+    });
+  }
+
+  function toggleDia(diaId) {
+    const card = document.getElementById(`card_${diaId}`);
+    const check = document.getElementById(`check_${diaId}`);
+    const activo = card.classList.contains('activo');
+    
+    if (activo) {
+      card.classList.remove('activo');
+      check.textContent = '☐';
+      const radios = card.querySelectorAll('.radio-opt');
+      radios.forEach(r => r.classList.remove('selected'));
+      const inputs = card.querySelectorAll('input[type="radio"]');
+      inputs.forEach(i => i.checked = false);
+    } else {
+      card.classList.add('activo');
+      check.textContent = '✓';
+    }
+  }
+
+  function selectRadio(label, groupName) {
+    const group = label.closest('.radio-grid');
+    group.querySelectorAll('.radio-opt').forEach(l => l.classList.remove('selected'));
+    label.classList.add('selected');
+    label.querySelector('input').checked = true;
+  }
+
+  function toggleConfirm() {
+    confirmado = !confirmado;
+    const box = document.getElementById('confirmBox').parentElement;
+    box.classList.toggle('checked', confirmado);
+  }
+
+  document.getElementById('formulario').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    ocultarMensaje();
+
+    const nombre = document.getElementById('nombre').value.trim();
+    const dni = document.getElementById('dni').value.trim();
+    const area = document.getElementById('area').value.trim();
+    const telefono = document.getElementById('telefono').value.trim();
+    const correo = document.getElementById('correo').value.trim();
+
+    if (!nombre) return mostrarError('Por favor ingresa tu nombre completo.');
+    if (!dni || !/^\d{8}$/.test(dni)) return mostrarError('El DNI debe tener exactamente 8 dígitos.');
+    if (!area) return mostrarError('Por favor ingresa tu área.');
+    if (!telefono) return mostrarError('Por favor ingresa tu teléfono.');
+    if (!correo) return mostrarError('Por favor ingresa tu email.');
+
+    const pedidos = [];
+    const diasActivos = document.querySelectorAll('.dia-card.activo');
+    
+    if (diasActivos.length === 0) return mostrarError('Selecciona al menos un día para pedir tu almuerzo.');
+
+    let hayError = false;
+    diasActivos.forEach(card => {
+      const cardId = card.id.replace('card_', '');
+      const diaInfo = diasDisponibles.find(d => d.id === cardId);
+      
+      const entradaInput = card.querySelector(`input[name="entrada_${cardId}"]:checked`);
+      const fondoInput = card.querySelector(`input[name="fondo_${cardId}"]:checked`);
+
+      if (!entradaInput || !fondoInput) {
+        hayError = true;
+        return;
+      }
+
+      pedidos.push({
+        fecha: diaInfo.fechaISO,
+        fechaTexto: `${diaInfo.nombre} ${diaInfo.fecha}`,
+        entrada: entradaInput.value,
+        fondo: fondoInput.value
+      });
+    });
+
+    if (hayError) return mostrarError('Completa entrada y plato de fondo para todos los días seleccionados.');
+    if (!confirmado) return mostrarError('Debes confirmar tu pedido antes de registrar.');
+
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('btnTexto').textContent = 'Enviando...';
+    document.getElementById('spinner').style.display = 'block';
+
+    const datos = {
+      nombre, dni, area, telefono, correo,
+      pedidos: pedidos,
+      totalAlmuerzos: pedidos.length,
+      fechaRegistro: new Date().toLocaleString('es-PE')
+    };
+
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(datos)
+      });
+
+      mostrarResumen(datos);
+      document.getElementById('formulario').style.display = 'none';
+
+    } catch (error) {
+      mostrarError('Ocurrió un error. Intenta nuevamente.');
+      document.getElementById('btnSubmit').disabled = false;
+      document.getElementById('btnTexto').textContent = 'Registrar mi pedido';
+      document.getElementById('spinner').style.display = 'none';
+    }
+  });
+
+  function mostrarResumen(datos) {
+    const div = document.getElementById('resumenPedido');
+    let html = `<h3>🎉 ¡Pedido registrado correctamente!</h3>`;
+    html += `<div class="resumen-item"><span>Trabajador</span><strong>${datos.nombre}</strong></div>`;
+    html += `<div class="resumen-item"><span>DNI</span><strong>${datos.dni}</strong></div>`;
+    html += `<div class="resumen-item"><span>Total almuerzos</span><strong>${datos.totalAlmuerzos}</strong></div>`;
+    datos.pedidos.forEach(p => {
+      html += `<div class="resumen-item" style="flex-direction:column; align-items:flex-start;">
+        <strong>${p.fechaTexto}</strong>
+        <span style="color:#718096; font-size:0.8rem;">${p.entrada} · ${p.fondo}</span>
+      </div>`;
+    });
+    html += `<div style="margin-top:10px; font-size:0.78rem; color:#4a5e3a;">⚠️ Recuerda recoger tu almuerzo a las 12:00 pm.</div>`;
+    div.innerHTML = html;
+    div.style.display = 'block';
+  }
+
+  function mostrarError(msg) {
+    const el = document.getElementById('msgError');
+    el.textContent = '⚠️ ' + msg;
+    el.className = 'msg error';
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function ocultarMensaje() {
+    const el = document.getElementById('msgError');
+    el.className = 'msg';
+  }
+
+  document.getElementById('dni').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 8);
+  });
+
+  // Cargar días al iniciar
+  window.addEventListener('DOMContentLoaded', generarDias);
+</script>
+</body>
+</html>
