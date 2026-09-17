@@ -44,18 +44,6 @@
   .header h1 { font-size: 1.8rem; margin-bottom: 4px; }
   .header p { font-size: 0.9rem; opacity: 0.9; }
 
-  .fecha-badge {
-    background: var(--verde-suave);
-    border: 1px solid #c8d8bc;
-    padding: 12px 28px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.85rem;
-    color: #4a5e3a;
-    font-weight: 500;
-  }
-
   .card {
     background: var(--blanco);
     padding: 28px;
@@ -90,6 +78,11 @@
     font-weight: 600;
     color: #4a5568;
     margin-bottom: 6px;
+  }
+  .field label .opcional {
+    font-weight: 400;
+    color: #a0aec0;
+    font-size: 0.75rem;
   }
   .field input, .field select {
     width: 100%;
@@ -221,30 +214,6 @@
     border: 1px solid #f5b7b1;
   }
 
-  .checkbox-field {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px;
-    border: 1.5px solid #d1dce8;
-    border-radius: 10px;
-    cursor: pointer;
-  }
-  .checkbox-field input[type="checkbox"] { display: none; }
-
-  .checkbox-box {
-    width: 22px; height: 22px;
-    border: 2px solid #cbd5e0;
-    border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
-  }
-  .checkbox-field.checked .checkbox-box {
-    background: var(--azul);
-    border-color: var(--azul);
-    color: white;
-  }
-
   .btn-submit {
     width: 100%;
     padding: 14px;
@@ -300,6 +269,18 @@
   .resumen-item:last-child { border-bottom: none; }
   .resumen-item span { color: #4a5e3a; }
   .resumen-item strong { color: var(--azul); }
+
+  .ayuda-text {
+    background: #f0f4f9;
+    border-left: 4px solid var(--azul);
+    padding: 12px 16px;
+    margin-top: 20px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #4a5568;
+    line-height: 1.5;
+  }
+  .ayuda-text strong { color: var(--azul); }
 </style>
 </head>
 <body>
@@ -320,29 +301,40 @@
       
       <div class="field-row">
         <div class="field">
-          <label>Nombre completo *</label>
-          <input type="text" id="nombre" placeholder="Juan Pérez" required>
-        </div>
-        <div class="field">
           <label>DNI *</label>
           <input type="text" id="dni" placeholder="12345678" maxlength="8" required>
+        </div>
+        <div class="field">
+          <label>Nombres *</label>
+          <input type="text" id="nombres" placeholder="Juan" required>
         </div>
       </div>
 
       <div class="field-row">
         <div class="field">
-          <label>Área/Departamento *</label>
-          <input type="text" id="area" placeholder="Ej: Producción" required>
+          <label>Apellidos *</label>
+          <input type="text" id="apellidos" placeholder="Pérez" required>
         </div>
         <div class="field">
-          <label>Teléfono *</label>
-          <input type="tel" id="telefono" placeholder="987654321" required>
+          <label>Cargo *</label>
+          <input type="text" id="cargo" placeholder="Ej: Operario" required>
         </div>
       </div>
 
       <div class="field">
-        <label>Email *</label>
-        <input type="email" id="correo" placeholder="tu@email.com" required>
+        <label>Área/Departamento *</label>
+        <input type="text" id="area" placeholder="Ej: Producción" required>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Teléfono <span class="opcional">(opcional)</span></label>
+          <input type="tel" id="telefono" placeholder="987654321">
+        </div>
+        <div class="field">
+          <label>Email <span class="opcional">(opcional)</span></label>
+          <input type="email" id="correo" placeholder="tu@email.com">
+        </div>
       </div>
     </div>
 
@@ -354,19 +346,17 @@
       <div id="sinDias" style="display:none; text-align:center; padding:20px; color:#a0aec0;">No hay días disponibles para pedir en este momento.</div>
     </div>
 
-    <!-- CONFIRMACIÓN -->
+    <!-- BOTÓN -->
     <div class="card">
-      <div class="section-title">✅ Confirmación</div>
-      <label class="checkbox-field" onclick="toggleConfirm()" style="cursor:pointer;">
-        <input type="checkbox" id="confirmBox">
-        <div class="checkbox-box">✓</div>
-        <span style="flex:1;">Confirmo mi pedido y sé que debo recogerlo a las 12:00 pm</span>
-      </label>
-
       <button type="submit" class="btn-submit" id="btnSubmit">
         <span id="btnTexto">Registrar mi pedido</span>
         <div id="spinner" class="spinner"></div>
       </button>
+
+      <div class="ayuda-text">
+        <strong>¿Dudas o cancelaciones?</strong><br>
+        Contacta al área de <strong>Bienestar Social</strong>
+      </div>
     </div>
   </form>
 </div>
@@ -374,7 +364,6 @@
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpi3l2uP68bp37RFAxVQAEgZ63Wve1FYrnAfepy2mamXkcfz60GejldOpi_t-FEDiMZw/exec';
   let diasDisponibles = [];
-  let confirmado = false;
 
   // Feriados peruanos 2026
   const FERIADOS_2026 = [
@@ -399,24 +388,58 @@
   function obtenerDiasDisponibles() {
     const hoy = new Date();
     const horaActual = hoy.getHours();
-    const diasDisponibles = [];
-
-    // Si es después de las 8:00 AM, empezar desde mañana; si no, empezar hoy
-    let fechaInicio = new Date(hoy);
-    if (horaActual >= 8) {
-      fechaInicio.setDate(fechaInicio.getDate() + 1);
-    }
+    const diaSemanaHoy = hoy.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
 
     const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
+    const diasDisponibles = [];
+
+    // Si es después de las 8:00 AM, los días se "cierran"
+    let haCerradoHoy = horaActual >= 8;
+
+    // Determinar fecha de inicio según el día y hora
+    let fechaInicio = new Date(hoy);
+
+    if (diaSemanaHoy === 0 || diaSemanaHoy === 6) {
+      // Sábado o domingo: mostrar siguiente semana (lunes-sábado)
+      const diasAlLunes = diaSemanaHoy === 0 ? 1 : 2;
+      fechaInicio.setDate(fechaInicio.getDate() + diasAlLunes);
+    } else if (diaSemanaHoy === 5) {
+      // Viernes
+      if (haCerradoHoy) {
+        // Después de 8 AM: mostrar sábado + siguiente semana (lunes-sábado)
+        fechaInicio.setDate(fechaInicio.getDate() + 1); // sábado
+      } else {
+        // Antes de 8 AM: mostrar viernes + resto de la semana
+        // fechaInicio se queda en viernes
+      }
+    } else {
+      // Lunes-Jueves
+      if (haCerradoHoy) {
+        // Después de 8 AM: mostrar día siguiente
+        fechaInicio.setDate(fechaInicio.getDate() + 1);
+      } else {
+        // Antes de 8 AM: mostrar desde hoy
+        // fechaInicio se queda en hoy
+      }
+    }
+
+    // Generar días a mostrar (máximo 14 días)
     let fecha = new Date(fechaInicio);
-    for (let i = 0; i < 14; i++) {
+    let diasMostrados = 0;
+
+    while (diasMostrados < 14) {
       const diaSemana = fecha.getDay();
       const fechaISO = fecha.toISOString().split('T')[0];
       const esFeriado = FERIADOS_2026.includes(fechaISO);
-      const esFinSemana = diaSemana === 0 || diaSemana === 6;
+      const esFinSemana = diaSemana === 0; // Solo domingos, no mostrar
+
+      if (esFinSemana) {
+        fecha.setDate(fecha.getDate() + 1);
+        continue; // Saltar domingos
+      }
 
       const nombre = nombresDias[diaSemana];
       const fechaTexto = `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`;
@@ -425,12 +448,23 @@
       let bloqueado = false;
       let textoBloqueado = '';
 
-      if (esFinSemana) {
-        bloqueado = true;
-        textoBloqueado = 'Fin de semana';
-      } else if (esFeriado) {
+      // Determinar si está bloqueado
+      if (esFeriado) {
         bloqueado = true;
         textoBloqueado = 'Feriado';
+      } else if (haCerradoHoy) {
+        // Después de 8 AM
+        if (diaSemanaHoy === 5) {
+          // Viernes: viernes mismo aparece bloqueado con "Plazo cerrado"
+          if (diaSemana === 5 && fecha.toDateString() === hoy.toDateString()) {
+            bloqueado = true;
+            textoBloqueado = 'Plazo cerrado';
+          }
+        } else if (diaSemana === diaSemanaHoy && fecha.toDateString() === hoy.toDateString()) {
+          // Cualquier otro día de la semana: ese día aparece bloqueado
+          bloqueado = true;
+          textoBloqueado = 'Plazo cerrado';
+        }
       }
 
       diasDisponibles.push({
@@ -442,6 +476,7 @@
         textoBloqueado: textoBloqueado
       });
 
+      diasMostrados++;
       fecha.setDate(fecha.getDate() + 1);
     }
 
@@ -517,26 +552,6 @@
                 </label>
               </div>
             </div>
-            <div class="opcion-group">
-              <label class="group-label">Postre</label>
-              <div class="radio-grid">
-                <label class="radio-opt" onclick="selectRadio(this, 'postre_${dia.id}')">
-                  <input type="radio" name="postre_${dia.id}" value="${m.postre}">
-                  <div class="radio-dot"></div>
-                  🍰 ${m.postre}
-                </label>
-              </div>
-            </div>
-            <div class="opcion-group">
-              <label class="group-label">Bebida</label>
-              <div class="radio-grid">
-                <label class="radio-opt" onclick="selectRadio(this, 'bebida_${dia.id}')">
-                  <input type="radio" name="bebida_${dia.id}" value="${m.bebida}">
-                  <div class="radio-dot"></div>
-                  🥤 ${m.bebida}
-                </label>
-              </div>
-            </div>
           </div>`;
       }
 
@@ -569,27 +584,23 @@
     label.querySelector('input').checked = true;
   }
 
-  function toggleConfirm() {
-    confirmado = !confirmado;
-    const box = document.getElementById('confirmBox').parentElement;
-    box.classList.toggle('checked', confirmado);
-  }
-
   document.getElementById('formulario').addEventListener('submit', async function(e) {
     e.preventDefault();
     ocultarMensaje();
 
-    const nombre = document.getElementById('nombre').value.trim();
     const dni = document.getElementById('dni').value.trim();
+    const nombres = document.getElementById('nombres').value.trim();
+    const apellidos = document.getElementById('apellidos').value.trim();
+    const cargo = document.getElementById('cargo').value.trim();
     const area = document.getElementById('area').value.trim();
     const telefono = document.getElementById('telefono').value.trim();
     const correo = document.getElementById('correo').value.trim();
 
-    if (!nombre) return mostrarError('Por favor ingresa tu nombre completo.');
     if (!dni || !/^\d{8}$/.test(dni)) return mostrarError('El DNI debe tener exactamente 8 dígitos.');
-    if (!area) return mostrarError('Por favor ingresa tu área.');
-    if (!telefono) return mostrarError('Por favor ingresa tu teléfono.');
-    if (!correo) return mostrarError('Por favor ingresa tu email.');
+    if (!nombres) return mostrarError('Por favor ingresa tu nombre(s).');
+    if (!apellidos) return mostrarError('Por favor ingresa tu apellido(s).');
+    if (!cargo) return mostrarError('Por favor ingresa tu cargo.');
+    if (!area) return mostrarError('Por favor ingresa tu área/departamento.');
 
     const pedidos = [];
     const diasActivos = document.querySelectorAll('.dia-card.activo');
@@ -618,17 +629,16 @@
     });
 
     if (hayError) return mostrarError('Completa entrada y plato de fondo para todos los días seleccionados.');
-    if (!confirmado) return mostrarError('Debes confirmar tu pedido antes de registrar.');
 
     document.getElementById('btnSubmit').disabled = true;
     document.getElementById('btnTexto').textContent = 'Enviando...';
     document.getElementById('spinner').style.display = 'block';
 
     const datos = {
-      nombre, dni, area, telefono, correo,
+      dni, nombres, apellidos, cargo, area, telefono, correo,
       pedidos: pedidos,
       totalAlmuerzos: pedidos.length,
-      fechaRegistro: new Date().toLocaleString('es-PE')
+      fechaRegistro: new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' })
     };
 
     try {
@@ -653,8 +663,10 @@
   function mostrarResumen(datos) {
     const div = document.getElementById('resumenPedido');
     let html = `<h3>🎉 ¡Pedido registrado correctamente!</h3>`;
-    html += `<div class="resumen-item"><span>Trabajador</span><strong>${datos.nombre}</strong></div>`;
+    html += `<div class="resumen-item"><span>Nombre</span><strong>${datos.nombres} ${datos.apellidos}</strong></div>`;
     html += `<div class="resumen-item"><span>DNI</span><strong>${datos.dni}</strong></div>`;
+    html += `<div class="resumen-item"><span>Cargo</span><strong>${datos.cargo}</strong></div>`;
+    html += `<div class="resumen-item"><span>Área</span><strong>${datos.area}</strong></div>`;
     html += `<div class="resumen-item"><span>Total almuerzos</span><strong>${datos.totalAlmuerzos}</strong></div>`;
     datos.pedidos.forEach(p => {
       html += `<div class="resumen-item" style="flex-direction:column; align-items:flex-start;">
@@ -662,7 +674,7 @@
         <span style="color:#718096; font-size:0.8rem;">${p.entrada} · ${p.fondo}</span>
       </div>`;
     });
-    html += `<div style="margin-top:10px; font-size:0.78rem; color:#4a5e3a;">⚠️ Recuerda recoger tu almuerzo a las 12:00 pm.</div>`;
+    html += `<div style="margin-top:10px; font-size:0.78rem; color:#4a5e3a;">⚠️ Recuerda recoger tu almuerzo a las 12:00 pm en el comedor.</div>`;
     div.innerHTML = html;
     div.style.display = 'block';
   }
@@ -683,7 +695,6 @@
     this.value = this.value.replace(/\D/g, '').slice(0, 8);
   });
 
-  // Cargar días al iniciar
   window.addEventListener('DOMContentLoaded', generarDias);
 </script>
 </body>
