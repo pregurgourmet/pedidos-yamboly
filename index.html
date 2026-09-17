@@ -28,21 +28,32 @@
     font-family: 'DM Sans', sans-serif;
     background: var(--azul-suave);
     min-height: 100vh;
-    padding: 24px 16px 60px;
+    padding: 16px 16px 60px;
     color: var(--texto);
   }
 
   .container { max-width: 640px; margin: 0 auto; }
 
-  .header {
-    background: var(--azul);
-    padding: 24px;
+  .cabecera {
+    width: 100%;
+    max-width: 100%;
     border-radius: 20px 20px 0 0;
-    color: white;
-    text-align: center;
+    display: block;
+    margin-bottom: 0;
   }
-  .header h1 { font-size: 1.8rem; margin-bottom: 4px; }
-  .header p { font-size: 0.9rem; opacity: 0.9; }
+
+  .fecha-bar {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    padding: 14px 16px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
 
   .card {
     background: var(--blanco);
@@ -286,9 +297,10 @@
 <body>
 
 <div class="container">
-  <div class="header">
-    <h1>🍽️ YAMBOLY</h1>
-    <p>Sistema de Pedidos de Almuerzo</p>
+  <img src="https://raw.githubusercontent.com/pregurgourmet/pedidos-yamboly/main/Cabecera.png" alt="YAMBOLY" class="cabecera">
+  
+  <div class="fecha-bar" id="fechaBar">
+    📅 Cargando fecha...
   </div>
 
   <div id="msgError" class="msg"></div>
@@ -365,6 +377,7 @@
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpi3l2uP68bp37RFAxVQAEgZ63Wve1FYrnAfepy2mamXkcfz60GejldOpi_t-FEDiMZw/exec';
   let diasDisponibles = [];
   let hayMenuProxima = false;
+  let menuPorDia = {};
 
   // Feriados peruanos 2026
   const FERIADOS_2026 = [
@@ -374,16 +387,28 @@
     '2026-12-09', '2026-12-25'
   ];
 
-  function getOpcionesMenu(nombreDia, fechaISO) {
-    return {
-      sopa: 'Sopa del día',
-      entrada: 'Entrada',
-      fondo1: 'Fondo especial',
-      fondo2: 'Fondo light',
-      light: 'Opción Light',
-      postre: 'Postre',
-      bebida: 'Bebida'
-    };
+  // Actualizar fecha en la barra
+  function actualizarFecha() {
+    const hoy = new Date();
+    const nombresDias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                          'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    const texto = `📅 ${nombresDias[hoy.getDay()]}, ${hoy.getDate()} de ${nombresMeses[hoy.getMonth()]} de ${hoy.getFullYear()}`;
+    document.getElementById('fechaBar').textContent = texto;
+  }
+
+  async function obtenerMenuDias(fechas) {
+    try {
+      const fechasJSON = JSON.stringify(fechas);
+      const response = await fetch(SCRIPT_URL + '?accion=obtenerMenu&fechas=' + encodeURIComponent(fechasJSON));
+      const data = await response.json();
+      menuPorDia = data.menu || {};
+      console.log('Menú cargado:', menuPorDia);
+    } catch (error) {
+      console.log('Error obteniendo menú:', error);
+      menuPorDia = {};
+    }
   }
 
   async function verificarMenuProxima() {
@@ -396,6 +421,18 @@
       console.log('Error verificando menú:', error);
       hayMenuProxima = false;
     }
+  }
+
+  function obtenerMenuPorDia(fechaISO) {
+    return menuPorDia[fechaISO] || {
+      sopa: 'Sopa del día',
+      entrada: 'Entrada',
+      fondo_1: 'Fondo especial',
+      fondo_2: 'Fondo light',
+      opcion_light: 'Opción Light',
+      postre: 'Postre',
+      bebida: 'Bebida'
+    };
   }
 
   function obtenerDiasDisponibles() {
@@ -504,8 +541,14 @@
   }
 
   async function generarDias() {
+    actualizarFecha();
     await verificarMenuProxima();
     diasDisponibles = obtenerDiasDisponibles();
+    
+    // Obtener menú para todos los días
+    const fechas = diasDisponibles.map(d => d.fechaISO);
+    await obtenerMenuDias(fechas);
+    
     const grid = document.getElementById('diasGrid');
     grid.innerHTML = '';
 
@@ -532,7 +575,7 @@
             <div style="font-size:0.75rem; opacity:0.6;">${dia.textoBloqueado}</div>
           </div>`;
       } else {
-        const m = getOpcionesMenu(dia.nombre, dia.fechaISO);
+        const m = obtenerMenuPorDia(dia.fechaISO);
         card.innerHTML = `
           <div class="dia-header" onclick="toggleDia('${dia.id}')">
             <div class="dia-check" id="check_${dia.id}">☐</div>
@@ -562,14 +605,14 @@
               <label class="group-label">Plato de Fondo</label>
               <div class="radio-grid">
                 <label class="radio-opt" onclick="selectRadio(this, 'fondo_${dia.id}')">
-                  <input type="radio" name="fondo_${dia.id}" value="${m.fondo1}">
+                  <input type="radio" name="fondo_${dia.id}" value="${m.fondo_1}">
                   <div class="radio-dot"></div>
-                  🍽️ ${m.fondo1}
+                  🍽️ ${m.fondo_1}
                 </label>
                 <label class="radio-opt" onclick="selectRadio(this, 'fondo_${dia.id}')">
-                  <input type="radio" name="fondo_${dia.id}" value="${m.fondo2}">
+                  <input type="radio" name="fondo_${dia.id}" value="${m.fondo_2}">
                   <div class="radio-dot"></div>
-                  🥦 ${m.fondo2}
+                  🥦 ${m.fondo_2}
                 </label>
               </div>
             </div>
