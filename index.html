@@ -505,13 +505,20 @@
         fechaInicio.setDate(fechaInicio.getDate() + 1); // Sábado
         
         fechaFin = new Date(fechaInicio);
-        fechaFin.setDate(fechaFin.getDate() + 6); // Sábado + 6 = próximo viernes
+        fechaFin.setDate(fechaFin.getDate() + 7); // Sábado + 7 = próximo sábado
       } else {
-        // ANTES de 8am: Viernes + Sábado
+        // ANTES de 8am: Viernes + Sábado + siguiente semana (Lunes-Sábado)
         fechaInicio = new Date(hoy);
         fechaFin = new Date(hoy);
-        fechaFin.setDate(fechaFin.getDate() + 1); // Sábado
+        fechaFin.setDate(fechaFin.getDate() + 8); // Viernes + 8 = próximo sábado
       }
+    } else if (diaSemanaHoy === 6) {
+      // SÁBADO: siguiente semana (Lunes-Sábado)
+      fechaInicio = new Date(hoy);
+      fechaInicio.setDate(fechaInicio.getDate() + 2); // Lunes
+      
+      fechaFin = new Date(fechaInicio);
+      fechaFin.setDate(fechaFin.getDate() + 5); // Lunes + 5 = sábado siguiente
     } else {
       // Lunes-Jueves: hasta sábado de esa semana
       fechaInicio = new Date(hoy);
@@ -521,6 +528,8 @@
     }
 
     let fecha = new Date(fechaInicio);
+    let diasPasadosMostrados = 0;
+    
     while (fecha <= fechaFin) {
       const diaSemana = fecha.getDay();
       if (diaSemana !== 0) {
@@ -528,24 +537,62 @@
         const nombre = nombresDias[diaSemana];
         const fechaTexto = `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`;
 
-        let bloqueado = false;
-        let textoBloqueado = '';
-
-        if (haCerradoHoy && diaSemanaHoy !== 5) {
-          if (diaSemana === diaSemanaHoy && fecha.toDateString() === hoy.toDateString()) {
-            bloqueado = true;
-            textoBloqueado = 'Plazo cerrado';
+        // VALIDAR: Si es un día pasado y ya mostramos 1 después de 8am, no mostrar
+        if (haCerradoHoy && fecha < hoy) {
+          diasPasadosMostrados++;
+          if (diasPasadosMostrados > 1) {
+            fecha.setDate(fecha.getDate() + 1);
+            continue; // Saltar este día
           }
         }
 
-        diasDisponibles.push({
-          id: fechaISO,
-          nombre: nombre,
-          fecha: fechaTexto,
-          fechaISO: fechaISO,
-          bloqueado: bloqueado,
-          textoBloqueado: textoBloqueado
-        });
+        let bloqueado = false;
+        let textoBloqueado = '';
+
+        // Marcar como "Plazo cerrado" solo el día actual después de 8am
+        if (haCerradoHoy && fecha.toDateString() === hoy.toDateString()) {
+          bloqueado = true;
+          textoBloqueado = 'Plazo cerrado';
+        }
+
+        // VALIDAR: Verificar que el día tenga datos en el menú
+        let tieneData = false;
+        if (menuSemanal) {
+          // Calcular el lunes de la semana de esta fecha
+          const lunesSemanaBuscada = new Date(fecha);
+          const diaFecha = lunesSemanaBuscada.getDay();
+          const diff = (diaFecha === 0 ? -6 : 1 - diaFecha);
+          lunesSemanaBuscada.setDate(lunesSemanaBuscada.getDate() + diff);
+          const lunesISO = lunesSemanaBuscada.toISOString().split('T')[0];
+          
+          if (menuSemanal[lunesISO]) {
+            const menuDia = menuSemanal[lunesISO][nombre];
+            // Verificar si al menos UN campo tiene datos (no es fallback)
+            if (menuDia) {
+              const tieneSopa = menuDia.sopa && menuDia.sopa !== 'Sopa del día';
+              const tieneEntrada = menuDia.entrada && menuDia.entrada !== 'Entrada';
+              const tieneFondo1 = menuDia.fondo_1 && menuDia.fondo_1 !== 'Fondo especial';
+              const tieneFondo2 = menuDia.fondo_2 && menuDia.fondo_2 !== 'Fondo light';
+              const tieneLight = menuDia.opcion_light && menuDia.opcion_light !== 'Opción Light';
+              const tienePostre = menuDia.postre && menuDia.postre !== 'Postre';
+              const tieneBebida = menuDia.bebida && menuDia.bebida !== 'Bebida';
+              
+              tieneData = tieneSopa || tieneEntrada || tieneFondo1 || tieneFondo2 || tieneLight || tienePostre || tieneBebida;
+            }
+          }
+        }
+
+        // Solo agregar el día si tiene datos o no hay menú cargado aún
+        if (tieneData || !menuSemanal) {
+          diasDisponibles.push({
+            id: fechaISO,
+            nombre: nombre,
+            fecha: fechaTexto,
+            fechaISO: fechaISO,
+            bloqueado: bloqueado,
+            textoBloqueado: textoBloqueado
+          });
+        }
       }
       fecha.setDate(fecha.getDate() + 1);
     }
