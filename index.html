@@ -400,13 +400,6 @@
   let menuSemanal = null;
   let hayMenuProxima = false;
 
-  const FERIADOS_2026 = [
-    '2026-01-01', '2026-02-16', '2026-02-17', '2026-03-30',
-    '2026-05-01', '2026-06-29', '2026-07-23', '2026-07-28',
-    '2026-07-29', '2026-08-06', '2026-10-08', '2026-12-08',
-    '2026-12-09', '2026-12-25'
-  ];
-
   // ============================================================
   // CARGAR MENÚ DESDE SHEETS (igual a Drimer)
   // ============================================================
@@ -532,17 +525,13 @@
       const diaSemana = fecha.getDay();
       if (diaSemana !== 0) {
         const fechaISO = fecha.toISOString().split('T')[0];
-        const esFeriado = FERIADOS_2026.includes(fechaISO);
         const nombre = nombresDias[diaSemana];
         const fechaTexto = `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`;
 
         let bloqueado = false;
         let textoBloqueado = '';
 
-        if (esFeriado) {
-          bloqueado = true;
-          textoBloqueado = 'Feriado';
-        } else if (haCerradoHoy && diaSemanaHoy !== 5) {
+        if (haCerradoHoy && diaSemanaHoy !== 5) {
           if (diaSemana === diaSemanaHoy && fecha.toDateString() === hoy.toDateString()) {
             bloqueado = true;
             textoBloqueado = 'Plazo cerrado';
