@@ -414,7 +414,13 @@
     const horarioAbierto = hora >= 7 && hora < 22;
     
     if (!horarioAbierto) {
-      document.getElementById('diasGrid').innerHTML = '';
+      // Ocultar todo el formulario
+      document.getElementById('tituloSelecciona').style.display = 'none';
+      document.getElementById('diasGrid').style.display = 'none';
+      document.getElementById('btnSubmit').style.display = 'none';
+      document.getElementById('seccionAyuda').style.display = 'none';
+      
+      // Mostrar solo el mensaje de cerrado
       document.getElementById('sinDias').style.display = 'block';
       document.getElementById('sinDias').innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: #718096;">
@@ -426,10 +432,14 @@
           </p>
         </div>
       `;
-      document.getElementById('btnSubmit').disabled = true;
       return false;
     }
     
+    // Si está abierto, mostrar todo
+    document.getElementById('tituloSelecciona').style.display = 'block';
+    document.getElementById('diasGrid').style.display = 'block';
+    document.getElementById('btnSubmit').style.display = 'block';
+    document.getElementById('seccionAyuda').style.display = 'block';
     document.getElementById('sinDias').innerHTML = '';
     document.getElementById('btnSubmit').disabled = false;
     return true;
