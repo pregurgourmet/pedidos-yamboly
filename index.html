@@ -403,8 +403,45 @@
   // ============================================================
   // CARGAR MENÚ DESDE SHEETS (igual a Drimer)
   // ============================================================
+  // ============================================================
+  // Validar horario de disponibilidad (7am - 10pm)
+  // ============================================================
+  function verificarHorario() {
+    const ahora = new Date();
+    const hora = ahora.getHours();
+    
+    // Formulario disponible: 7am (07:00) a 10pm (22:00)
+    const horarioAbierto = hora >= 7 && hora < 22;
+    
+    if (!horarioAbierto) {
+      document.getElementById('diasGrid').innerHTML = '';
+      document.getElementById('sinDias').style.display = 'block';
+      document.getElementById('sinDias').innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: #718096;">
+          <div style="font-size: 48px; margin-bottom: 15px;">🕐</div>
+          <h2 style="margin: 0 0 10px 0; color: #2d3748; font-size: 18px;">Formulario Cerrado</h2>
+          <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+            El formulario de pedidos está disponible de <strong>7:00 AM a 10:00 PM</strong>.<br>
+            Por favor, intenta nuevamente dentro del horario.
+          </p>
+        </div>
+      `;
+      document.getElementById('btnSubmit').disabled = true;
+      return false;
+    }
+    
+    document.getElementById('sinDias').innerHTML = '';
+    document.getElementById('btnSubmit').disabled = false;
+    return true;
+  }
+
   async function cargarMenuDesdeSheets() {
     try {
+      // Verificar horario primero
+      if (!verificarHorario()) {
+        return;
+      }
+      
       const resp = await fetch(`${SCRIPT_URL}?action=getMenu`);
       const data = await resp.json();
       if (data.status === 'OK' && data.menuPorSemana) {
