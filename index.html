@@ -457,71 +457,15 @@
   }
 
 
-  // ============================================================
-  // VALIDAR HORARIO (7am - 10pm)
-  // ============================================================
-  function verificarHorario() {
-    const ahora = new Date();
-    const hora = ahora.getHours();
-    
-    // Formulario disponible: 7am (07:00) a 10pm (22:00)
-    const horarioAbierto = hora >= 7 && hora < 22;
-    
-    if (!horarioAbierto) {
-      // Ocultar secciones del formulario
-      const tituloSelecciona = document.getElementById('tituloSelecciona');
-      const diasGrid = document.getElementById('diasGrid');
-      const btnSubmit = document.getElementById('btnSubmit');
-      
-      if (tituloSelecciona) tituloSelecciona.style.display = 'none';
-      if (diasGrid) diasGrid.style.display = 'none';
-      if (btnSubmit) btnSubmit.style.display = 'none';
-      
-      // Buscar y ocultar sección de ayuda (dudas/cancelaciones)
-      const allElements = document.querySelectorAll('*');
-      allElements.forEach(el => {
-        if ((el.textContent && el.textContent.includes('Dudas')) || 
-            (el.textContent && el.textContent.includes('cancelaciones'))) {
-          if (!el.querySelector('*')) { // Solo si es una sección, no un elemento dentro
-            el.style.display = 'none';
-          }
-        }
-      });
-      
-      // Mostrar mensaje de cerrado
-      const sinDias = document.getElementById('sinDias');
-      if (sinDias) {
-        sinDias.style.display = 'block';
-        sinDias.innerHTML = `
-          <div style="text-align: center; padding: 40px 20px; color: #718096;">
-            <div style="font-size: 48px; margin-bottom: 15px;">🕐</div>
-            <h2 style="margin: 0 0 10px 0; color: #2d3748; font-size: 18px;">Formulario Cerrado</h2>
-            <p style="margin: 0; font-size: 14px; line-height: 1.6;">
-              El formulario de pedidos está disponible de <strong>7:00 AM a 10:00 PM</strong>.<br>
-              Por favor, intenta nuevamente dentro del horario.
-            </p>
-          </div>
-        `;
-      }
-      
-      return false;
-    }
-    
-    return true;
-  }
+
 
   // ============================================================
   // INICIALIZACIÓN
   // ============================================================
   document.addEventListener('DOMContentLoaded', async () => {
     actualizarFecha();
-    
-    // Verificar horario PRIMERO
-    if (verificarHorario()) {
-      // Solo cargar datos si está dentro del horario
-      await cargarMenuDesdeSheets();
-      generarDias();
-    }
+    await cargarMenuDesdeSheets();
+    generarDias();
   });
 
   function actualizarFecha() {
@@ -536,15 +480,14 @@
 
   function obtenerDiasDisponibles() {
     const hoy = new Date();
-    const horaActual = hoy.getHours();
     const diaSemanaHoy = hoy.getDay();
+    let haCerradoHoy = false; // Siempre false: formulario abierto 24/7
 
     const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
     const diasDisponibles = [];
-    let haCerradoHoy = horaActual >= 8;
 
     let fechaInicio, fechaFin;
 
@@ -607,12 +550,6 @@
 
         let bloqueado = false;
         let textoBloqueado = '';
-
-        // Marcar como "Plazo cerrado" solo el día actual después de 8am
-        if (haCerradoHoy && fecha.toDateString() === hoy.toDateString()) {
-          bloqueado = true;
-          textoBloqueado = 'Plazo cerrado';
-        }
 
         // VALIDAR: Verificar que el día tenga datos en el menú
         let tieneData = false;
